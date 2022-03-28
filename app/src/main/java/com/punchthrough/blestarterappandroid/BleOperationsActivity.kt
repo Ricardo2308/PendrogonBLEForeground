@@ -22,6 +22,7 @@ import android.bluetooth.BluetoothDevice
 import android.bluetooth.BluetoothGattCharacteristic
 import android.content.Context
 import android.os.Bundle
+import android.util.Log
 import android.view.MenuItem
 import android.view.View
 import android.view.inputmethod.InputMethodManager
@@ -47,6 +48,7 @@ import org.jetbrains.anko.alert
 import org.jetbrains.anko.noButton
 import org.jetbrains.anko.selector
 import org.jetbrains.anko.yesButton
+import java.lang.StringBuilder
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -138,6 +140,18 @@ class BleOperationsActivity : AppCompatActivity() {
         if (animator is SimpleItemAnimator) {
             animator.supportsChangeAnimations = false
         }
+    }
+
+    private fun hexToASCII(hexValue: String): String? {
+        val output = StringBuilder("")
+        var i = 2
+        while (i < hexValue.length) {
+            val str = hexValue.substring(i, i + 2)
+            output.append(str.toInt(16).toChar())
+            i += 2
+        }
+        Log.d("Cadena", hexValue.length.toString())
+        return output.toString()
     }
 
     @SuppressLint("SetTextI18n")

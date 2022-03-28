@@ -24,6 +24,7 @@ import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
+import android.bluetooth.le.ScanFilter
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
@@ -47,6 +48,8 @@ private const val ENABLE_BLUETOOTH_REQUEST_CODE = 1
 private const val LOCATION_PERMISSION_REQUEST_CODE = 2
 
 class MainActivity : AppCompatActivity() {
+    private var scanForeground: ScanForeground? = null
+    var names = arrayOf("Polar H7 391BB014")
 
     /*******************************************
      * Properties
@@ -71,6 +74,8 @@ class MainActivity : AppCompatActivity() {
             runOnUiThread { scan_button.text = if (value) "Stop Scan" else "Start Scan" }
         }
 
+    var filters: List<ScanFilter>? = null
+
     private val scanResults = mutableListOf<ScanResult>()
     private val scanResultAdapter: ScanResultAdapter by lazy {
         ScanResultAdapter(scanResults) { result ->
@@ -93,6 +98,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        scanForeground = ScanForeground()
         setContentView(R.layout.activity_main)
         if (BuildConfig.DEBUG) {
             Timber.plant(Timber.DebugTree())
@@ -106,6 +112,7 @@ class MainActivity : AppCompatActivity() {
             it.setOnClickListener {
                 log("START THE FOREGROUND SERVICE ON DEMAND")
                 actionOnService(Actions.START)
+                scanForeground!!.startBleScan(this)
             }
         }
 
@@ -164,12 +171,22 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
-    private fun startBleScan() {
+    fun startBleScan() {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M && !isLocationPermissionGranted) {
             requestLocationPermission()
         } else {
             scanResults.clear()
             scanResultAdapter.notifyDataSetChanged()
+            var filters: MutableList<ScanFilter?>? = null
+            if (names != null) {
+                filters = ArrayList()
+                for (name in names) {
+                    val filter = ScanFilter.Builder()
+                        .setDeviceName(name)
+                        .build()
+                    filters.add(filter)
+                }
+            }
             bleScanner.startScan(null, scanSettings, scanCallback)
             isScanning = true
         }

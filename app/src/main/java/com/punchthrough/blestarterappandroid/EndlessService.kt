@@ -16,9 +16,7 @@
 
 package com.punchthrough.blestarterappandroid
 
-import android.Manifest
 import android.app.*
-import android.app.Activity
 import android.content.Context
 import android.content.Intent
 import android.graphics.Color
@@ -29,12 +27,6 @@ import android.os.SystemClock
 import android.provider.Settings
 import android.widget.Toast
 import java.text.SimpleDateFormat
-import androidx.core.app.ActivityCompat
-import android.bluetooth.BluetoothAdapter 
-import android.bluetooth.BluetoothManager
-import android.content.pm.PackageManager
-import android.bluetooth.le.ScanSettings
-import androidx.core.content.ContextCompat
 import java.util.*
 import com.github.kittinunf.fuel.Fuel
 import com.github.kittinunf.fuel.core.extensions.jsonBody
@@ -44,6 +36,8 @@ class EndlessService : Service() {
 
     private var wakeLock: PowerManager.WakeLock? = null
     private var isServiceStarted = false
+    private var scanForeground: ScanForeground? = null
+    private var ma: MainActivity? = null
 
     override fun onBind(intent: Intent): IBinder? {
         log("Some component want to bind with the service")
@@ -94,6 +88,7 @@ class EndlessService : Service() {
     }
 
     private fun startService() {
+        scanForeground = ScanForeground()
         if (isServiceStarted) return
         log("Starting the foreground service task")
         Toast.makeText(this, "Service starting its task", Toast.LENGTH_SHORT).show()
@@ -111,6 +106,7 @@ class EndlessService : Service() {
         // we're starting a loop in a coroutine
         GlobalScope.launch(Dispatchers.IO) {
             while (isServiceStarted) {
+                //scanForeground!!.startBleScan()
                 launch(Dispatchers.IO) {
                     pingFakeServer()
                 }
