@@ -43,13 +43,17 @@ import kotlinx.android.synthetic.main.activity_main.scan_button
 import kotlinx.android.synthetic.main.activity_main.scan_results_recycler_view
 import org.jetbrains.anko.alert
 import timber.log.Timber
+import android.R.attr.name
+import android.R.attr.name
 
 private const val ENABLE_BLUETOOTH_REQUEST_CODE = 1
 private const val LOCATION_PERMISSION_REQUEST_CODE = 2
 
 class MainActivity : AppCompatActivity() {
     private var scanForeground: ScanForeground? = null
-    var names = arrayOf("Polar H7 391BB014")
+    var names = arrayOf("202112055")
+
+    private var mContext: Context? = null
 
     /*******************************************
      * Properties
@@ -73,8 +77,6 @@ class MainActivity : AppCompatActivity() {
             field = value
             runOnUiThread { scan_button.text = if (value) "Stop Scan" else "Start Scan" }
         }
-
-    var filters: List<ScanFilter>? = null
 
     private val scanResults = mutableListOf<ScanResult>()
     private val scanResultAdapter: ScanResultAdapter by lazy {
@@ -112,7 +114,6 @@ class MainActivity : AppCompatActivity() {
             it.setOnClickListener {
                 log("START THE FOREGROUND SERVICE ON DEMAND")
                 actionOnService(Actions.START)
-                scanForeground!!.startBleScan(this)
             }
         }
 
@@ -187,7 +188,7 @@ class MainActivity : AppCompatActivity() {
                     filters.add(filter)
                 }
             }
-            bleScanner.startScan(null, scanSettings, scanCallback)
+            bleScanner.startScan(filters, scanSettings, scanCallback)
             isScanning = true
         }
     }

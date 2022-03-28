@@ -144,14 +144,13 @@ class BleOperationsActivity : AppCompatActivity() {
 
     private fun hexToASCII(hexValue: String): String? {
         val output = StringBuilder("")
-        var i = 2
+        var i = 0
         while (i < hexValue.length) {
             val str = hexValue.substring(i, i + 2)
+            Log.d("Cadena", str)
             output.append(str.toInt(16).toChar())
-            i += 2
         }
-        Log.d("Cadena", hexValue.length.toString())
-        return output.toString()
+        return hexValue
     }
 
     @SuppressLint("SetTextI18n")

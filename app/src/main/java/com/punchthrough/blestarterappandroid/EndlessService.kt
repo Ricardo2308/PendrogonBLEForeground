@@ -106,7 +106,8 @@ class EndlessService : Service() {
         // we're starting a loop in a coroutine
         GlobalScope.launch(Dispatchers.IO) {
             while (isServiceStarted) {
-                //scanForeground!!.startBleScan()
+                scanForeground!!.setContext(applicationContext)
+                scanForeground!!.startBleScan()
                 launch(Dispatchers.IO) {
                     pingFakeServer()
                 }

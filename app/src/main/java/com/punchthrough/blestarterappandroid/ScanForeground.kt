@@ -46,9 +46,8 @@ import android.bluetooth.le.BluetoothLeScanner
 
 import android.R.attr.name
 import android.R.attr.name
-
-
-
+import android.bluetooth.le.ScanFilter
+import android.R.attr.name
 
 
 
@@ -58,16 +57,17 @@ private const val LOCATION_PERMISSION_REQUEST_CODE = 2
 
 class ScanForeground: AppCompatActivity() {
 
-    private val texto : String = "SOY EL MAYOR FAN DEL MEJOR JUGADOR DE LA HISTORIA MESSI"
-    private val context: Context? = null
+    var names = arrayOf("202112055")
+
+    private var mContext: Context? = null
+
+    fun setContext(mContext: Context?) {
+        this.mContext = mContext
+    }
 
     /*******************************************
      * Properties
      *******************************************/
-
-    fun prueba() {
-        Log.d("HOLA", texto)
-    }
 
     private val bluetoothAdapter: BluetoothAdapter by lazy {
         val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
@@ -140,15 +140,26 @@ class ScanForeground: AppCompatActivity() {
         }
     }
 
-    fun startBleScan(context: Context) {
-        if (ContextCompat.checkSelfPermission(context, Manifest.permission.ACCESS_FINE_LOCATION) ==
+    fun startBleScan() {
+        Log.d("Context", mContext.toString())
+        if (ContextCompat.checkSelfPermission(mContext!!, Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED) {
             val adapter = BluetoothAdapter.getDefaultAdapter()
             val bleScanner = adapter.bluetoothLeScanner
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    var filters: MutableList<ScanFilter?>? = null
+                    if (names != null) {
+                        filters = ArrayList()
+                        for (name in names) {
+                            val filter = ScanFilter.Builder()
+                                .setDeviceName(name)
+                                .build()
+                            filters.add(filter)
+                        }
+                    }
                     scanResults.clear()
                     scanResultAdapter.notifyDataSetChanged()
-                    bleScanner.startScan(null, scanSettings, scanCallback)
+                    bleScanner.startScan(filters, scanSettings, scanCallback)
                 } else {
                     requestLocationPermission()
                 }
@@ -205,6 +216,7 @@ class ScanForeground: AppCompatActivity() {
             } else {
                 with(result.device) {
                     Timber.i("Found BLE device! Name: ${name ?: "Unnamed"}, address: $address")
+                    ConnectionManager.connect(this, mContext!!)
                 }
             }
         }
