@@ -20,7 +20,6 @@ import android.Manifest
 import android.app.Activity
 import android.bluetooth.BluetoothAdapter
 import android.bluetooth.BluetoothDevice
-import android.bluetooth.BluetoothManager
 import android.bluetooth.le.ScanCallback
 import android.bluetooth.le.ScanResult
 import android.bluetooth.le.ScanSettings
@@ -28,29 +27,15 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
-import android.os.Bundle
-import android.util.Log
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.recyclerview.widget.LinearLayoutManager
-import androidx.recyclerview.widget.RecyclerView
-import androidx.recyclerview.widget.SimpleItemAnimator
 import com.punchthrough.blestarterappandroid.ble.ConnectionEventListener
 import com.punchthrough.blestarterappandroid.ble.ConnectionManager
-import kotlinx.android.synthetic.main.activity_main.scan_button
-import kotlinx.android.synthetic.main.activity_main.scan_results_recycler_view
 import org.jetbrains.anko.alert
 import timber.log.Timber
-import android.bluetooth.le.BluetoothLeScanner
-
-import android.R.attr.name
-import android.R.attr.name
 import android.bluetooth.le.ScanFilter
-import android.R.attr.name
-
-
-
+import android.util.Log
 
 private const val ENABLE_BLUETOOTH_REQUEST_CODE = 1
 private const val LOCATION_PERMISSION_REQUEST_CODE = 2
@@ -69,24 +54,17 @@ class ScanForeground: AppCompatActivity() {
      * Properties
      *******************************************/
 
-    private val bluetoothAdapter: BluetoothAdapter by lazy {
-        val bluetoothManager = getSystemService(Context.BLUETOOTH_SERVICE) as BluetoothManager
-        bluetoothManager.adapter
-    }
+    private val bluetoothAdapter = BluetoothAdapter.getDefaultAdapter()
+
+    private val bleScanner = bluetoothAdapter.bluetoothLeScanner
+
+    private var isScanning = false
 
     private val scanSettings = ScanSettings.Builder()
         .setScanMode(ScanSettings.SCAN_MODE_LOW_LATENCY)
         .build()
 
     private val scanResults = mutableListOf<ScanResult>()
-    private val scanResultAdapter: ScanResultAdapter by lazy {
-        ScanResultAdapter(scanResults) { result ->
-            with(result.device) {
-                Timber.w("Connecting to $address")
-                ConnectionManager.connect(this, this@ScanForeground)
-            }
-        }
-    }
 
     private val isLocationPermissionGranted
         get() = hasPermission(Manifest.permission.ACCESS_FINE_LOCATION)
@@ -141,29 +119,37 @@ class ScanForeground: AppCompatActivity() {
     }
 
     fun startBleScan() {
-        Log.d("Context", mContext.toString())
         if (ContextCompat.checkSelfPermission(mContext!!, Manifest.permission.ACCESS_FINE_LOCATION) ==
             PackageManager.PERMISSION_GRANTED) {
-            val adapter = BluetoothAdapter.getDefaultAdapter()
-            val bleScanner = adapter.bluetoothLeScanner
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-                    var filters: MutableList<ScanFilter?>? = null
-                    if (names != null) {
-                        filters = ArrayList()
-                        for (name in names) {
-                            val filter = ScanFilter.Builder()
-                                .setDeviceName(name)
-                                .build()
-                            filters.add(filter)
-                        }
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                var filters: MutableList<ScanFilter?>? = null
+                if (names != null) {
+                    filters = ArrayList()
+                    for (name in names) {
+                        val filter = ScanFilter.Builder()
+                            .setDeviceName(name)
+                            .build()
+                        filters.add(filter)
                     }
-                    scanResults.clear()
-                    scanResultAdapter.notifyDataSetChanged()
-                    bleScanner.startScan(filters, scanSettings, scanCallback)
-                } else {
-                    requestLocationPermission()
                 }
+                bleScanner.startScan(filters, scanSettings, scanCallback)
+                isScanning = true
+            } else {
+                requestLocationPermission()
+            }
         }
+    }
+
+    private fun stopBleScan() {
+        bleScanner.stopScan(scanCallback)
+        isScanning = false
+    }
+
+    private fun conectarBLE(device: BluetoothDevice, context: Context) {
+        if (isScanning) {
+            stopBleScan()
+        }
+        ConnectionManager.connect(device, context)
     }
 
     private fun requestLocationPermission() {
@@ -186,23 +172,6 @@ class ScanForeground: AppCompatActivity() {
         }
     }
 
-    private fun setupRecyclerView() {
-        scan_results_recycler_view.apply {
-            adapter = scanResultAdapter
-            layoutManager = LinearLayoutManager(
-                this@ScanForeground,
-                RecyclerView.VERTICAL,
-                false
-            )
-            isNestedScrollingEnabled = false
-        }
-
-        val animator = scan_results_recycler_view.itemAnimator
-        if (animator is SimpleItemAnimator) {
-            animator.supportsChangeAnimations = false
-        }
-    }
-
     /*******************************************
      * Callback bodies
      *******************************************/
@@ -212,11 +181,13 @@ class ScanForeground: AppCompatActivity() {
             val indexQuery = scanResults.indexOfFirst { it.device.address == result.device.address }
             if (indexQuery != -1) { // A scan result already exists with the same address
                 scanResults[indexQuery] = result
-                scanResultAdapter.notifyItemChanged(indexQuery)
             } else {
                 with(result.device) {
                     Timber.i("Found BLE device! Name: ${name ?: "Unnamed"}, address: $address")
-                    ConnectionManager.connect(this, mContext!!)
+                    if (isScanning) {
+                        stopBleScan()
+                    }
+                    conectarBLE(this, mContext!!)
                 }
             }
         }
@@ -228,21 +199,8 @@ class ScanForeground: AppCompatActivity() {
 
     private val connectionEventListener by lazy {
         ConnectionEventListener().apply {
-            onConnectionSetupComplete = { gatt ->
-                Intent(this@ScanForeground, BleOperationsActivity::class.java).also {
-                    it.putExtra(BluetoothDevice.EXTRA_DEVICE, gatt.device)
-                    startActivity(it)
-                }
-                ConnectionManager.unregisterListener(this)
-            }
             onDisconnect = {
-                runOnUiThread {
-                    alert {
-                        title = "Disconnected"
-                        message = "Disconnected or unable to connect to device."
-                        positiveButton("OK") {}
-                    }.show()
-                }
+                runOnUiThread { Log.d("F", "TE HAS DESCONECTADO")}
             }
         }
     }
