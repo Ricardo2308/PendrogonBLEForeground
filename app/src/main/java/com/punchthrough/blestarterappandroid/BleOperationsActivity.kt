@@ -147,10 +147,10 @@ class BleOperationsActivity : AppCompatActivity() {
         var i = 0
         while (i < hexValue.length) {
             val str = hexValue.substring(i, i + 2)
-            Log.d("Cadena", str)
             output.append(str.toInt(16).toChar())
+            i += 2
         }
-        return hexValue
+        return output.toString()
     }
 
     @SuppressLint("SetTextI18n")
@@ -227,7 +227,8 @@ class BleOperationsActivity : AppCompatActivity() {
             }
 
             onCharacteristicRead = { _, characteristic ->
-                log("Read from ${characteristic.uuid}: ${characteristic.value.toHexString()}")
+                log("Read from ${characteristic.uuid}: " +
+                    "${hexToASCII(characteristic.value.toHexString().replace(" ", ""))}")
             }
 
             onCharacteristicWrite = { _, characteristic ->
@@ -288,4 +289,10 @@ class BleOperationsActivity : AppCompatActivity() {
 
     private fun String.hexToBytes() =
         this.chunked(2).map { it.toUpperCase(Locale.US).toInt(16).toByte() }.toByteArray()
+
+    fun obtenerLectura(characteristic: BluetoothGattCharacteristic) : String{
+        ConnectionManager.readCharacteristic(device, characteristic)
+        Log.d("A", hexToASCII(characteristic.value.toHexString().replace(" ", "")))
+        return "HOLA"
+    }
 }

@@ -88,7 +88,6 @@ class EndlessService : Service() {
     }
 
     private fun startService() {
-        scanForeground = ScanForeground()
         if (isServiceStarted) return
         log("Starting the foreground service task")
         Toast.makeText(this, "Service starting its task", Toast.LENGTH_SHORT).show()
@@ -105,19 +104,20 @@ class EndlessService : Service() {
 
         // we're starting a loop in a coroutine
         GlobalScope.launch(Dispatchers.IO) {
+            scanForeground = ScanForeground()
+            scanForeground!!.setContext(applicationContext)
+            scanForeground!!.startBleScan()
             while (isServiceStarted) {
-                scanForeground!!.setContext(applicationContext)
-                scanForeground!!.startBleScan()
                 launch(Dispatchers.IO) {
                     pingFakeServer()
                 }
-                delay(1 * 60 * 1000)
+                delay(10 * 60 * 1000)
             }
             log("End of the loop for the service")
         }
     }
 
-    private fun stopService() {
+    fun stopService() {
         log("Stopping the foreground service")
         Toast.makeText(this, "Service stopping", Toast.LENGTH_SHORT).show()
         try {

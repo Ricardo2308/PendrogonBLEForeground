@@ -30,6 +30,7 @@ import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import android.os.Bundle
+import android.util.Log
 import android.widget.Button
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.app.ActivityCompat
@@ -39,21 +40,19 @@ import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.SimpleItemAnimator
 import com.punchthrough.blestarterappandroid.ble.ConnectionEventListener
 import com.punchthrough.blestarterappandroid.ble.ConnectionManager
+import com.punchthrough.blestarterappandroid.ble.isReadable
 import kotlinx.android.synthetic.main.activity_main.scan_button
 import kotlinx.android.synthetic.main.activity_main.scan_results_recycler_view
 import org.jetbrains.anko.alert
 import timber.log.Timber
-import android.R.attr.name
-import android.R.attr.name
 
 private const val ENABLE_BLUETOOTH_REQUEST_CODE = 1
 private const val LOCATION_PERMISSION_REQUEST_CODE = 2
 
 class MainActivity : AppCompatActivity() {
     private var scanForeground: ScanForeground? = null
+    private var bleOperations: BleOperationsActivity? = null
     var names = arrayOf("202112055")
-
-    private var mContext: Context? = null
 
     /*******************************************
      * Properties
@@ -113,14 +112,14 @@ class MainActivity : AppCompatActivity() {
         findViewById<Button>(R.id.btnStartService).let {
             it.setOnClickListener {
                 log("START THE FOREGROUND SERVICE ON DEMAND")
-                actionOnService(Actions.START)
+                StartForeground()
             }
         }
 
         findViewById<Button>(R.id.btnStopService).let {
             it.setOnClickListener {
                 log("STOP THE FOREGROUND SERVICE ON DEMAND")
-                actionOnService(Actions.STOP)
+                StopForeground()
             }
         }
     }
@@ -248,9 +247,10 @@ class MainActivity : AppCompatActivity() {
             } else {
                 with(result.device) {
                     Timber.i("Found BLE device! Name: ${name ?: "Unnamed"}, address: $address")
+                    ConnectionManager.connect(this, this@MainActivity)
                 }
-                scanResults.add(result)
-                scanResultAdapter.notifyItemInserted(scanResults.size - 1)
+                //scanResults.add(result)
+                //scanResultAdapter.notifyItemInserted(scanResults.size - 1)
             }
         }
 
@@ -262,40 +262,56 @@ class MainActivity : AppCompatActivity() {
     private val connectionEventListener by lazy {
         ConnectionEventListener().apply {
             onConnectionSetupComplete = { gatt ->
-                Intent(this@MainActivity, BleOperationsActivity::class.java).also {
-                    it.putExtra(BluetoothDevice.EXTRA_DEVICE, gatt.device)
-                    startActivity(it)
-                }
-                ConnectionManager.unregisterListener(this)
+                bleOperations = BleOperationsActivity()
+            /*
+            Intent(this@MainActivity, BleOperationsActivity::class.java).also {
+                it.putExtra(BluetoothDevice.EXTRA_DEVICE, gatt.device)
+                startActivity(it)
             }
-            onDisconnect = {
-                runOnUiThread {
-                    alert {
-                        title = "Disconnected"
-                        message = "Disconnected or unable to connect to device."
-                        positiveButton("OK") {}
-                    }.show()
-                }
+            ConnectionManager.unregisterListener(this)*/
+            /*val characteristics by lazy {
+                    ConnectionManager.servicesOnDevice(gatt.device)?.flatMap { service ->
+                        service.characteristics ?: listOf()
+                    } ?: listOf()
+            }
+            characteristics.map {
+                characteristic ->
+                    if (characteristic.isReadable()){
+                        Log.d("Hola", bleOperations!!.obtenerLectura(characteristic))
+                    }
+            }
+*/
+        }
+        onDisconnect = {
+                runOnUiThread {startBleScan()}
             }
         }
     }
 
-    /*******************************************
-     * Extension functions
-     *******************************************/
+/*******************************************
+* Extension functions
+*******************************************/
 
     private fun Context.hasPermission(permissionType: String): Boolean {
         return ContextCompat.checkSelfPermission(this, permissionType) ==
-            PackageManager.PERMISSION_GRANTED
+        PackageManager.PERMISSION_GRANTED
     }
 
     private fun Activity.requestPermission(permission: String, requestCode: Int) {
         ActivityCompat.requestPermissions(this, arrayOf(permission), requestCode)
     }
 
+    fun StartForeground(){
+        actionOnService(Actions.START)
+    }
+
+    fun StopForeground(){
+        actionOnService(Actions.STOP)
+    }
+
     private fun actionOnService(action: Actions) {
         if (getServiceState(this) == ServiceState.STOPPED && action == Actions.STOP) return
-        Intent(this, EndlessService::class.java).also {
+            Intent(this, EndlessService::class.java).also {
             it.action = action.name
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
                 log("Starting the service in >=26 Mode")
