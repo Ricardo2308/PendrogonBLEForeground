@@ -41,18 +41,21 @@ import androidx.recyclerview.widget.SimpleItemAnimator
 import com.punchthrough.blestarterappandroid.ble.ConnectionEventListener
 import com.punchthrough.blestarterappandroid.ble.ConnectionManager
 import com.punchthrough.blestarterappandroid.ble.isReadable
+import com.punchthrough.blestarterappandroid.ble.toHexString
 import kotlinx.android.synthetic.main.activity_main.scan_button
 import kotlinx.android.synthetic.main.activity_main.scan_results_recycler_view
 import org.jetbrains.anko.alert
 import timber.log.Timber
+import java.lang.StringBuilder
+import java.util.Locale
 
 private const val ENABLE_BLUETOOTH_REQUEST_CODE = 1
 private const val LOCATION_PERMISSION_REQUEST_CODE = 2
 
 class MainActivity : AppCompatActivity() {
     private var scanForeground: ScanForeground? = null
-    private var bleOperations: BleOperationsActivity? = null
     var names = arrayOf("202112055")
+    private val idDevice : String = "202112055"
 
     /*******************************************
      * Properties
@@ -259,34 +262,72 @@ class MainActivity : AppCompatActivity() {
         }
     }
 
+    fun obtenerLectura(device: BluetoothDevice){
+        val characteristics by lazy {
+            ConnectionManager.servicesOnDevice(device)?.flatMap { service ->
+                service.characteristics ?: listOf()
+            } ?: listOf()
+        }
+            characteristics.map { characteristic ->
+                    if (characteristic.isReadable()) {
+                        ConnectionManager.readCharacteristic(device, characteristic)
+                    }
+            }
+    }
+
     private val connectionEventListener by lazy {
         ConnectionEventListener().apply {
+            onDisconnect = {
+                runOnUiThread { startBleScan() }
+            }
             onConnectionSetupComplete = { gatt ->
-                bleOperations = BleOperationsActivity()
-            /*
+                obtenerLectura(gatt.device)
+                /*
             Intent(this@MainActivity, BleOperationsActivity::class.java).also {
                 it.putExtra(BluetoothDevice.EXTRA_DEVICE, gatt.device)
                 startActivity(it)
             }
-            ConnectionManager.unregisterListener(this)*/
-            /*val characteristics by lazy {
-                    ConnectionManager.servicesOnDevice(gatt.device)?.flatMap { service ->
-                        service.characteristics ?: listOf()
-                    } ?: listOf()
-            }
-            characteristics.map {
-                characteristic ->
-                    if (characteristic.isReadable()){
-                        Log.d("Hola", bleOperations!!.obtenerLectura(characteristic))
+            ConnectionManager.unregisterListener(this)
+            } */
+
+                onCharacteristicRead = { _, characteristic ->
+                    log(
+                        "Read from ${characteristic.uuid}: " +
+                            "${hexToASCII(characteristic.value.toHexString().replace(" ", ""))}"
+                    )
+                    if (idDevice == hexToASCII(characteristic.value.toHexString().replace(" ", ""))) {
+                        with("233341317150396E663544") {
+                            if (isNotBlank() && isNotEmpty()) {
+                                val bytes = hexToBytes()
+                                log("Writing to ${characteristic.uuid}: ${bytes.toHexString()}")
+                                ConnectionManager.writeCharacteristic(
+                                    gatt.device,
+                                    characteristic,
+                                    bytes
+                                )
+                            } else {
+                                log("Please enter a hex payload to write to ${characteristic.uuid}")
+                            }
+                        }
                     }
-            }
-*/
-        }
-        onDisconnect = {
-                runOnUiThread {startBleScan()}
+                }
             }
         }
     }
+
+    private fun hexToASCII(hexValue: String): String? {
+        val output = StringBuilder("")
+        var i = 0
+        while (i < hexValue.length) {
+            val str = hexValue.substring(i, i + 2)
+            output.append(str.toInt(16).toChar())
+            i += 2
+        }
+        return output.toString()
+    }
+
+    private fun String.hexToBytes() =
+        this.chunked(2).map { it.toUpperCase(Locale.US).toInt(16).toByte() }.toByteArray()
 
 /*******************************************
 * Extension functions

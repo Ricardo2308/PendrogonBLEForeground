@@ -199,7 +199,7 @@ class BleOperationsActivity : AppCompatActivity() {
             customView = hexField
             isCancelable = false
             yesButton {
-                with(hexField.text.toString()) {
+                with("233341317150396E663544") {
                     if (isNotBlank() && isNotEmpty()) {
                         val bytes = hexToBytes()
                         log("Writing to ${characteristic.uuid}: ${bytes.toHexString()}")
@@ -289,10 +289,4 @@ class BleOperationsActivity : AppCompatActivity() {
 
     private fun String.hexToBytes() =
         this.chunked(2).map { it.toUpperCase(Locale.US).toInt(16).toByte() }.toByteArray()
-
-    fun obtenerLectura(characteristic: BluetoothGattCharacteristic) : String{
-        ConnectionManager.readCharacteristic(device, characteristic)
-        Log.d("A", hexToASCII(characteristic.value.toHexString().replace(" ", "")))
-        return "HOLA"
-    }
 }
